@@ -1,0 +1,17 @@
+{
+  "name": "chess",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "deploy": "gcloud preview app deploy app.yaml"
+  },
+  "dependencies": {
+    "express": "~4.13.1",
+    "gcloud": "^0.27.0",
+    "body-parser" : "^1.4.28"
+  },
+  "engines": {
+    "node": ">=0.12.7"
+  }
+}

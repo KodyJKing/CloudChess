@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='Kody King' content=''>
+<style type='text/css'>
+	#canvas{
+		border: 2px solid gray;
+	}
+</style>
+<title>Chess</title>
+<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
+<script src='chess.js'></script>
+<script>
+    var lightColor = 'snow';
+    var darkColor = 'gray';
+    var lightHighlight = 'orange';
+    var darkHighlight = 'darkOrange';
+    var canvas;
+    var ctx;
+    var piecesImg;
+    var sheet = {king:0,queen:1,bishop:2,knight:3,rook:4,pawn:5};
+
+    document.addEventListener('mousedown', doClick, false);
+    document.addEventListener('contextmenu', doClick, false);
+
+    var theGame;
+    var selected = [];
+    var pieceSelected = false;
+    var activePiece = null;
+
+    function getGame(){
+        $.get('game', function(data){
+            if(data){
+                theGame = data;
+                draw();
+            } else
+                setTimeout(getGame, 1000);
+        });
+    }
+
+    window.onload = function(){
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        piecesImg = document.getElementById('pieces');
+
+        setInterval(getGame, 1000);
+    }
+
+    function draw(){
+        drawBoard(theGame.board, selected);
+        displayTurn();
+    }
+
+    function drawBoard(board, selected){
+    	for(var x = 0; x < 8; x++){
+    		for(var y = 0; y < 8; y++){
+                ctx.fillStyle = (x + y) % 2 == 0 ? lightColor : darkColor;
+    			ctx.fillRect(x * 100, y * 100, 100, 100);
+    		}
+    	}
+
+        for(var highlight of selected)
+            drawHighlight(highlight);
+
+        for(piece of board)
+            drawPiece(piece);
+    }
+
+    function drawPiece(piece){
+        if(piece == null)
+            return;
+    	var sheetX = sheet[piece.kind] * 333;
+    	var sheetY =  piece.color == 'white' ? 0 : 333;
+    	ctx.drawImage(piecesImg, sheetX, sheetY, 333, 333, piece.pos.x * 100, piece.pos.y * 100, 100, 100);
+    }
+
+    function drawHighlight(pos){
+        ctx.fillStyle = (pos.x + pos.y) % 2 == 0 ? lightHighlight : darkHighlight;
+        ctx.fillRect(pos.x * 100, pos.y * 100, 100, 100);
+    }
+
+    function displayTurn(){
+        var caps = theGame.turn.charAt(0).toUpperCase() + theGame.turn.slice(1);
+        $('#toMove').text('Turn: ' + caps);
+    }
+
+    function doClick(ev){
+        if (ev.target.id != 'canvas') {
+            return;
+        }
+        ev.preventDefault();
+        var x = ev.pageX - $('#canvas').offset().left;
+        var y = ev.pageY - $('#canvas').offset().top;
+        x /= 100;
+        y /= 100;
+        x = Math.floor(x);
+        y = Math.floor(y);
+        clickLocation(vec(x,y));
+        draw();
+    }
+
+    function clickLocation(v){
+        if(!pieceSelected){
+            activePiece = getPiece(theGame.board, v);
+            if(activePiece && activePiece.color == theGame.turn){
+                pieceSelected = true;
+                selected = getMoves(theGame, activePiece);
+                if(selected.length == 0)
+                    clearSelection();
+            }
+        }
+        else
+            tryMove(v);
+    }
+
+    function tryMove(v){
+        var legal = false;
+        for(var move of selected){
+            if(move.x == v.x && move.y == v.y){
+                legal = true;
+                break;
+            }
+        }
+        if(legal){
+            $.post('submit', {start : activePiece.pos, stop : v});
+            playerMovePiece(theGame, activePiece, v);
+        }
+        clearSelection();
+    }
+
+    function clearSelection(){
+        pieceSelected = false;
+        selected = [];
+        activePiece = null;
+    }
+
+    function sendReset(){
+        if(!confirm('Reset the game?'))
+            return;
+        $.get('reset', function(data){
+            if(data)
+                getGame();
+        });
+    }
+
+</script>
+</head>
+<body>
+
+<div style='display:none'>
+<img id='pieces' src='chessPieces.png'>
+</div>
+
+<h2>Chess</h2>
+
+<div id='toMove'></div>
+<canvas id='canvas' width=800 height=800></canvas> <br>
+<button onclick='getGame()'>Refresh</button>
+<button onclick='sendReset()'>Reset</button>
+
+</body>
+</html>
