@@ -189,7 +189,7 @@ function getMoves(game, piece){
 		if(scan.obstruction && scan.obstruction.color != piece.color && moveType.constraint(board, piece, piece.pos, scan.end))
 			result.push(scan.end);
 	}
-	var king = game.kings[piece.color]; //Check king safety.
+	var king = game.kings[piece.color];
 	if(king){
 		return filterByKingSafety(king, result, board, piece);
 	}
