@@ -102,33 +102,39 @@ var KINDS = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
 // Game Objects -----------------------------------
 
 function piece(color, kind){return {color : color, kind : kind, pos : null, hasMoved : false};}
+
 function board(){
 	var result = [];
 	for(var i = 0; i < 64; i++)
 		result.push(null);
 	return result;
 }
+
 function game(){ return {board : board(), kings : {white : null, black : null}, turn : 'white'}; }
 
 function inBoard(pos){return pos.x >= 0 && pos.x < 8 && pos.y >= 0 && pos.y < 8;}
+
 function getPiece(board, pos){ 
 	var ind = index(pos);
 	if(ind > board.length)
 		return null;
 	return board[index(pos)];
 }
+
 function setPiece(board, pos, piece){
 	if(piece)
 	    piece.pos = pos;
 	board[index(pos)] = piece;
 }
 function isEmpty(board, pos){ return getPiece(board, pos) == null;}
+
 function movePiece(board, piece, pos){
 	moveInfo[piece.kind].action(board, piece, piece.pos, pos);
 	setPiece(board, piece.pos, null);
 	setPiece(board, pos, piece);
 	piece.hasMoved = true;
 }
+
 function playerMovePiece(game, piece, pos){
 	movePiece(game.board, piece, pos);
 	game.turn = game.turn == 'white' ? 'black' : 'white';
@@ -183,20 +189,24 @@ function getMoves(game, piece){
 		if(scan.obstruction && scan.obstruction.color != piece.color && moveType.constraint(board, piece, piece.pos, scan.end))
 			result.push(scan.end);
 	}
-	var king = game.kings[piece.color];
+	var king = game.kings[piece.color]; //Check king safety.
 	if(king){
-		var filtered = [];
-		for(var move of result){
-			var copyBoard = deepClone(board);
-			var copyPiece = getPiece(copyBoard, piece.pos);
-			var copyKing = getPiece(copyBoard, king.pos);
-			movePiece(copyBoard, copyPiece, move);
-			if(!isUnderThreat(copyBoard, copyKing))
-				filtered.push(move);
-		}
-		return filtered;
+		return filterByKingSafety(king, result, board, piece);
 	}
 	return result;
+}
+
+function filterByKingSafety(king, moves, board, piece){
+	var filtered = [];
+	for(var move of moves){
+		var copyBoard = deepClone(board);
+		var copyPiece = getPiece(copyBoard, piece.pos);
+		var copyKing = getPiece(copyBoard, king.pos);
+		movePiece(copyBoard, copyPiece, move);
+		if(!isUnderThreat(copyBoard, copyKing))
+			filtered.push(move);
+	}
+	return filtered;
 }
 
 function isUnderThreat(board, piece){

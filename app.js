@@ -11,7 +11,7 @@ app.use(bodyParser.urlencoded({
 var chess = require('./public/chess.js');
 //var db = require('./db.js');
 
-var instance;
+//var instance;
 var game = chess.game();
 chess.setup(game);
 // db.getInstance(function(ins){
