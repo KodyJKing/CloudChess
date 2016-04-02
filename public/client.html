@@ -137,8 +137,8 @@
     function sendReset(){
         if(!confirm('Reset the game?'))
             return;
-        $.get('reset', function(data){
-            if(data)
+        $.get('reset', function(response){
+            if(response)
                 getGame();
         });
     }
