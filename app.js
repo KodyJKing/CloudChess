@@ -21,10 +21,6 @@ chess.setup(game);
 
 app.use(express.static('public'));
 
-app.get('/', function (req, res) {
-	res.redirect('/client.html');
-});
-
 app.get('/game', function (req, res) {
   res.send(game);
   //console.log('Served game!');
@@ -40,8 +36,9 @@ app.post('/submit', function(req, res){
 		//db.saveInstance(instance);
 		res.send(true);
 	}
-	else
+	else {
 		res.send(false);
+	}
 });
 
 app.get('/reset', function(req, res){

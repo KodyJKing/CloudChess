@@ -16,10 +16,17 @@
     var darkColor = 'gray';
     var lightHighlight = 'orange';
     var darkHighlight = 'darkOrange';
+
+    sheetCellWidth = 333;
+    var sheet = {king:0,queen:1,bishop:2,knight:3,rook:4,pawn:5};
+
+    tileWidth = 100;
+
     var canvas;
     var ctx;
     var piecesImg;
-    var sheet = {king:0,queen:1,bishop:2,knight:3,rook:4,pawn:5};
+    
+
 
     document.addEventListener('mousedown', doClick, false);
     document.addEventListener('contextmenu', doClick, false);
@@ -55,7 +62,7 @@
     	for(var x = 0; x < 8; x++){
     		for(var y = 0; y < 8; y++){
                 ctx.fillStyle = (x + y) % 2 == 0 ? lightColor : darkColor;
-    			ctx.fillRect(x * 100, y * 100, 100, 100);
+    			ctx.fillRect(x * tileWidth, y * tileWidth, tileWidth, tileWidth);
     		}
     	}
 
@@ -66,17 +73,18 @@
             drawPiece(piece);
     }
 
+
     function drawPiece(piece){
         if(piece == null)
             return;
-    	var sheetX = sheet[piece.kind] * 333;
-    	var sheetY =  piece.color == 'white' ? 0 : 333;
-    	ctx.drawImage(piecesImg, sheetX, sheetY, 333, 333, piece.pos.x * 100, piece.pos.y * 100, 100, 100);
+    	var sheetX = sheet[piece.kind] * sheetCellWidth;
+    	var sheetY =  piece.color == 'white' ? 0 : sheetCellWidth;
+    	ctx.drawImage(piecesImg, sheetX, sheetY, sheetCellWidth, sheetCellWidth, piece.pos.x * tileWidth, piece.pos.y * tileWidth, tileWidth, tileWidth);
     }
 
     function drawHighlight(pos){
         ctx.fillStyle = (pos.x + pos.y) % 2 == 0 ? lightHighlight : darkHighlight;
-        ctx.fillRect(pos.x * 100, pos.y * 100, 100, 100);
+        ctx.fillRect(pos.x * tileWidth, pos.y * tileWidth, tileWidth, tileWidth);
     }
 
     function displayTurn(){
@@ -89,12 +97,8 @@
             return;
         }
         ev.preventDefault();
-        var x = ev.pageX - $('#canvas').offset().left;
-        var y = ev.pageY - $('#canvas').offset().top;
-        x /= 100;
-        y /= 100;
-        x = Math.floor(x);
-        y = Math.floor(y);
+        var x = Math.floor((ev.pageX - $('#canvas').offset().left) / 100);
+        var y = Math.floor((ev.pageY - $('#canvas').offset().top) / 100);
         clickLocation(vec(x,y));
         draw();
     }
