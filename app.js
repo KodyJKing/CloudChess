@@ -7,7 +7,6 @@ app.use(bodyParser.urlencoded({
 	extended : true
 }));
 
-
 var chess = require('./public/chess.js');
 //var db = require('./db.js');
 
@@ -31,8 +30,8 @@ app.post('/submit', function(req, res){
 	move.start = chess.revec(move.start);
 	move.stop = chess.revec(move.stop);
 	if(chess.checkMove(game, move.start, move.stop)){
-		var piece = chess.getPiece(game.board, move.start);
-		chess.playerMovePiece(game, piece, move.stop);
+		chess.performMove(game, move);
+		//if(chess.gameState(game) == 'playing') chess.performMove(game, chess.nDeepMove(game, 3, false));
 		//db.saveInstance(instance);
 		res.send(true);
 	}
@@ -54,3 +53,14 @@ app.get('/reset', function(req, res){
 app.listen(3000, function () {
   console.log('Chess app listening on port 3000!');
 });
+
+delay = 5;
+function aiLoop(){
+	var move = chess.nDeepMove(game, 1, false);
+	if(move && chess.checkMove(game, move.start, move.stop))
+		chess.performMove(game, move);
+	else
+		console.log('Attempted illegal move!');
+	if(chess.gameState(game) == 'playing') setTimeout(aiLoop, delay);
+}
+setTimeout(aiLoop, 1000);

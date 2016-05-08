@@ -52,7 +52,7 @@ function isDiagonal(diff){
 }
 
 function isForward(diff, color){
-	return (diff.y < 0) == (color == 'white');
+	return diff.y != 0 && ((diff.y < 0) == (color == 'white'));
 }
 
 function kingConstraint(board, piece, start, stop){
@@ -65,6 +65,7 @@ function isCastle(diff){
 }
 
 function canCastle(board, piece, diff){
+	return false;
 	if(piece.hasMoved || isUnderThreat(board, piece))
 		return false;
 	var dir = deepClone(diff);
@@ -84,17 +85,17 @@ function kingAction(board, piece, start, stop){
 	}
 }
 
-function move(repeats, dirs, constraint, action){
+function moveType(repeats, dirs, constraint, action){
 	return {repeats : repeats, dirs : dirs, constraint : constraint  || function(){return true}, action : action || function(){}};
 }
 
 var moveInfo = {
-	rook : move(7, [N,E,S,W]),
-	bishop : move(7, [NE, SE, SW, NW]),
-	queen : move(7, DIRS.slice()),
-	king : move(1, DIRS.concat(mul(E,2), mul(W,2)), kingConstraint, kingAction),
-	knight : move(1, [vec(2, 1), vec(-2, 1), vec(-2, -1), vec(2, -1), vec(1, 2), vec(-1, 2), vec(-1, -2), vec(1, -2)]),
-	pawn : move(1, DIRS.concat([mul(N,2), mul(S, 2)]), pawnConstraint)
+	rook : moveType(7, [N,E,S,W]),
+	bishop : moveType(7, [NE, SE, SW, NW]),
+	queen : moveType(7, DIRS),
+	king : moveType(1, DIRS.concat(mul(E,2), mul(W,2)), kingConstraint, kingAction),
+	knight : moveType(1, [vec(2, 1), vec(-2, 1), vec(-2, -1), vec(2, -1), vec(1, 2), vec(-1, 2), vec(-1, -2), vec(1, -2)]),
+	pawn : moveType(1, DIRS.concat([mul(N,2), mul(S, 2)]), pawnConstraint)
 };
 
 var KINDS = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
@@ -110,7 +111,11 @@ function board(){
 	return result;
 }
 
-function game(){ return {board : board(), kings : {white : null, black : null}, turn : 'white'}; }
+function game(){return {board : board(), kings : {white : null, black : null}, turn : 'white'}; }
+
+function move(start, stop){return {start : start, stop : stop}};
+
+function opposite(color){return color == 'white' ? 'black' : 'white'}
 
 function inBoard(pos){return pos.x >= 0 && pos.x < 8 && pos.y >= 0 && pos.y < 8;}
 
@@ -137,7 +142,12 @@ function movePiece(board, piece, pos){
 
 function playerMovePiece(game, piece, pos){
 	movePiece(game.board, piece, pos);
-	game.turn = game.turn == 'white' ? 'black' : 'white';
+	game.turn = opposite(game.turn);
+}
+
+function performMove(game, move){
+	var piece = getPiece(game.board, move.start);
+	playerMovePiece(game, piece, move.stop);
 }
 
 var backRow = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
@@ -176,21 +186,22 @@ function scanLine(board, piece, dir, repeats){
 	return {end : pos, distance : distance, obstruction : obstruction, covered : covered};
 }
 
-function getMoves(game, piece){
+function getMoves(game, piece, ignoreKingSafety){
 	var board = game.board;
 	var moveType = moveInfo[piece.kind];
 	var result = [];
-	for(var dir of moveType.dirs){
+ 	for(var dir of moveType.dirs){
 		var scan = scanLine(board, piece, dir, moveType.repeats);
 		for(var pos of scan.covered){
-			if(moveType.constraint(board, piece, piece.pos, pos))
+			if(moveType.constraint(board, piece, piece.pos, pos)){
 				result.push(pos);
+			}
 		}
 		if(scan.obstruction && scan.obstruction.color != piece.color && moveType.constraint(board, piece, piece.pos, scan.end))
 			result.push(scan.end);
 	}
 	var king = game.kings[piece.color];
-	if(king){
+	if(king && !ignoreKingSafety){
 		return filterByKingSafety(king, result, board, piece);
 	}
 	return result;
@@ -199,6 +210,7 @@ function getMoves(game, piece){
 function filterByKingSafety(king, moves, board, piece){
 	var filtered = [];
 	for(var move of moves){
+		//var changes = change(hame, move);
 		var copyBoard = deepClone(board);
 		var copyPiece = getPiece(copyBoard, piece.pos);
 		var copyKing = getPiece(copyBoard, king.pos);
@@ -210,6 +222,8 @@ function filterByKingSafety(king, moves, board, piece){
 }
 
 function isUnderThreat(board, piece){
+	if(!piece)
+		return false;
 	for(var kind of KINDS){
 		var moveType = moveInfo[kind];
 		for(var dir of moveType.dirs){
@@ -225,14 +239,176 @@ function isUnderThreat(board, piece){
 
 function checkMove(game, start, stop){
 	var piece = getPiece(game.board, start);
+	if(!piece)
+		return false;
 	if(piece.color != game.turn)
 		return false;
 	var moves = getMoves(game, piece);
-	for(move of moves){
+	for(var move of moves){
 		if(move.x == stop.x && move.y == stop.y)
 			return true;
 	}
 	return false;
 }
 
-if(module) module.exports = {game : game, setup : setup, getMoves : getMoves, getPiece : getPiece, playerMovePiece : playerMovePiece, checkMove : checkMove, revec : revec};
+function allMoves(game, captures){
+	result = [];
+	for(var x = 0; x < 8; x++){
+		for(var y = 0; y < 8; y++){
+			var pos = vec(x,y);
+			var piece = getPiece(game.board, pos);
+			if(!piece || piece.color != game.turn)
+				continue;
+
+			var moves = getMoves(game, piece);
+			for(var destination of moves)
+				result.push(move(pos, destination));
+		}
+	}
+	return result
+}
+
+function gameState(game){
+	if(allMoves(game).length == 0)
+		return isUnderThreat(game.board, game.kings[game.turn]) ? 'checkmate' : 'stalemate';
+	return 'playing';
+}
+
+// AI ---------------------------------
+
+function revertMove(game, change){
+	var move = change.move;
+	setPiece(game.board, move.start, change.moved);
+	setPiece(game.board, move.stop, change.deleted);
+	game.turn = change.turn;
+}
+
+function change(game, move){
+	return {move : move, moved : deepClone(getPiece(game.board, move.start)), deleted : deepClone(getPiece(game.board, move.stop)), turn : game.turn};
+}
+
+function firstMove(game){
+	var moves = allMoves(game);
+	return moves[0];
+}
+
+function randomMove(game){
+	var moves = allMoves(game);
+	return moves[Math.floor(Math.random() * moves.length)];
+}
+
+function greedyMove(game, info){
+	var moves = allMoves(game);
+	var bestScore = -Infinity;
+	var bestMove;
+	for(var move of moves){
+		var changes = change(game, move);
+		performMove(game, move);
+		game.turn = opposite(game.turn);
+		var score = totalRating(game);
+		if(score > bestScore){
+			bestScore = score;
+			bestMove = move;
+			if(info && score > info.min){
+				revertMove(game, changes);
+			 	break;
+			}
+		}
+		revertMove(game, changes);
+	}
+	if(info) info.score = bestScore;
+	return bestMove;
+}
+
+function oneDeepMove(game){
+	var moves = allMoves(game);
+	var bestScore = Infinity;
+	var bestMove;
+	for(var move of moves){
+		var changes = change(game, move);
+		performMove(game, move);
+		var info = {min : bestScore};
+		greedyMove(game, info);
+		if(info.score < bestScore){
+			bestScore = info.score;
+			bestMove = move;
+		}
+		revertMove(game, changes);
+	}
+	return bestMove;
+}
+
+function nDeepMove(game, depth, maximizing, info, killers){
+	var killers = killers || {};
+	var moves = allMoves(game);
+	var bestScore = maximizing ? -Infinity : Infinity;
+	var bestMove;
+	for(var move of moves){
+		var changes = change(game, move);
+		performMove(game, move);
+		var score;
+		if(depth == 0){
+			game.turn = opposite(game.turn);
+			score = totalRating(game);
+		} else {
+			var newInfo = {best : bestScore};
+			nDeepMove(game, depth - 1, !maximizing, newInfo, killers);
+			score = newInfo.score;
+		}
+		if(maximizing && score > bestScore || !maximizing && score < bestScore){
+			bestScore = score;
+			bestMove = move;
+			if(info && (maximizing && score > info.best || !maximizing && score < info.best)){
+				revertMove(game, changes);
+				break;
+			}		
+		}
+		revertMove(game, changes);
+	}
+	if(info) info.score = bestScore;
+	return bestMove;
+}
+
+// Board Assessment ---------------------------------
+
+var pieceValues = {king: 0, pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9};
+
+function pieceRating(game, piece){
+	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1);
+}
+
+function mobilityRating(game, piece){
+	//console.log(game);
+	var moveCount = getMoves(game, piece, true).length;
+	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1) * moveCount;
+}
+
+function threatRating(game, piece, weights){
+	if(isUnderThreat(game.board, piece)){
+		var pieceWeight = piece.kind == 'king' ? weights.kingDefense : pieceValues[piece.kind];
+		return pieceWeight * (game.turn == piece.color ? -weights.defense : weights.agression);
+	}
+	return 0;
+}
+
+var defaults = {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0};
+function totalRating(game, weights){
+	weights = weights || defaults;
+	var sum = Math.random() * weights.noise;
+	for(var x = 0; x < 8; x++){
+		for(var y = 0; y < 8; y++){
+			var pos = vec(x,y);
+			var piece = getPiece(game.board, pos);
+			if(piece){
+				sum += pieceRating(game, piece) + /*threatRating(game, piece, weights) +*/ mobilityRating(game, piece) * weights.mobility;
+			}
+		}
+	}
+	return sum;
+}
+
+if(module) module.exports = 
+	{game : game, setup : setup, getMoves : getMoves, getPiece : getPiece, 
+	playerMovePiece : playerMovePiece, performMove : performMove, checkMove : checkMove, 
+	gameState : gameState, revec : revec, randomMove : randomMove, greedyMove : greedyMove,
+	oneDeepMove : oneDeepMove, nDeepMove : nDeepMove};

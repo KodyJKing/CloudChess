@@ -26,8 +26,6 @@
     var ctx;
     var piecesImg;
     
-
-
     document.addEventListener('mousedown', doClick, false);
     document.addEventListener('contextmenu', doClick, false);
 
@@ -36,12 +34,15 @@
     var pieceSelected = false;
     var activePiece = null;
 
-    function getGame(){
+    var refreshDelay = 10;
+    function getGame(loop){
         $.get('game', function(data){
             if(data){
                 theGame = data;
                 draw();
             }
+            if(loop)
+                setTimeout(() => getGame(true), refreshDelay);
         });
     }
 
@@ -50,7 +51,7 @@
         ctx = canvas.getContext('2d');
         piecesImg = document.getElementById('pieces');
 
-        setInterval(getGame, 1000);
+        getGame(true);
     }
 
     function draw(){
@@ -87,9 +88,12 @@
         ctx.fillRect(pos.x * tileWidth, pos.y * tileWidth, tileWidth, tileWidth);
     }
 
+    function capped(str){
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
     function displayTurn(){
-        var caps = theGame.turn.charAt(0).toUpperCase() + theGame.turn.slice(1);
-        $('#toMove').text('Turn: ' + caps);
+        $('#toMove').text(capped(theGame.turn) + ' ' + gameState(theGame) + '.');
     }
 
     function doClick(ev){
@@ -97,8 +101,8 @@
             return;
         }
         ev.preventDefault();
-        var x = Math.floor((ev.pageX - $('#canvas').offset().left) / 100);
-        var y = Math.floor((ev.pageY - $('#canvas').offset().top) / 100);
+        var x = Math.floor((ev.pageX - $('#canvas').offset().left) / tileWidth);
+        var y = Math.floor((ev.pageY - $('#canvas').offset().top) / tileWidth);
         clickLocation(vec(x,y));
         draw();
     }
@@ -117,19 +121,19 @@
             tryMove(v);
     }
 
-    function tryMove(v){
-        var legal = false;
-        for(var move of selected){
-            if(move.x == v.x && move.y == v.y){
-                legal = true;
-                break;
-            }
-        }
-        if(legal){
-            $.post('submit', {start : activePiece.pos, stop : v});
-            playerMovePiece(theGame, activePiece, v);
+    function tryMove(destination){
+        if(checkMove(theGame, activePiece.pos, destination)){
+            performAndSend(move(activePiece.pos, destination))
         }
         clearSelection();
+    }
+
+    function performAndSend(move){
+        if(gameState(theGame) != 'playing')
+            return;
+        $.post('submit', move);
+        performMove(theGame, move);
+        draw();
     }
 
     function clearSelection(){
@@ -157,10 +161,15 @@
 
 <h2>Chess</h2>
 
-<div id='toMove'></div>
+<div id='toMove'></div> <div id='gameState'></div>
 <canvas id='canvas' width=800 height=800></canvas> <br>
-<button onclick='getGame()'>Refresh</button>
-<button onclick='sendReset()'>Reset</button>
+<button onclick='getGame(false)'>Refresh</button>
+<button onclick='sendReset()'>Reset</button> <br>
+<button onclick='performAndSend(firstMove(theGame))'>Quick Move</button>
+<button onclick='performAndSend(randomMove(theGame))'>Random Move</button>
+<button onclick='performAndSend(greedyMove(theGame))'>Greedy Move</button>
+<button onclick='performAndSend(oneDeepMove(theGame))'>One Deep Move</button>
+<button onclick='performAndSend(nDeepMove(theGame, 3, false))'>Deep Move</button>
 
 </body>
 </html>
