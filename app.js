@@ -29,7 +29,7 @@ app.post('/submit', function(req, res){
 	var move = req.body;
 	move.start = chess.revec(move.start);
 	move.stop = chess.revec(move.stop);
-	if(chess.checkMove(game, move.start, move.stop)){
+	if(chess.checkMove(game, move)){
 		chess.performMove(game, move);
 		//if(chess.gameState(game) == 'playing') chess.performMove(game, chess.nDeepMove(game, 3, false));
 		//db.saveInstance(instance);
@@ -57,10 +57,10 @@ app.listen(3000, function () {
 delay = 5;
 function aiLoop(){
 	var move = chess.nDeepMove(game, 1, false);
-	if(move && chess.checkMove(game, move.start, move.stop))
+	if(move && chess.checkMove(game, move))
 		chess.performMove(game, move);
 	else
 		console.log('Attempted illegal move!');
 	if(chess.gameState(game) == 'playing') setTimeout(aiLoop, delay);
 }
-setTimeout(aiLoop, 1000);
+//setTimeout(aiLoop, 1000);

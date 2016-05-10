@@ -30,6 +30,7 @@
     document.addEventListener('contextmenu', doClick, false);
 
     var theGame;
+    var gameHistory = [];
     var selected = [];
     var pieceSelected = false;
     var activePiece = null;
@@ -51,7 +52,14 @@
         ctx = canvas.getContext('2d');
         piecesImg = document.getElementById('pieces');
 
-        getGame(true);
+        //getGame(true);
+        reset();
+    }
+
+    function reset(){
+        theGame = game();
+        setup(theGame);
+        draw();
     }
 
     function draw(){
@@ -70,7 +78,7 @@
         for(var highlight of selected)
             drawHighlight(highlight);
 
-        for(piece of board)
+        for(var piece of board)
             drawPiece(piece);
     }
 
@@ -83,9 +91,9 @@
     	ctx.drawImage(piecesImg, sheetX, sheetY, sheetCellWidth, sheetCellWidth, piece.pos.x * tileWidth, piece.pos.y * tileWidth, tileWidth, tileWidth);
     }
 
-    function drawHighlight(pos){
-        ctx.fillStyle = (pos.x + pos.y) % 2 == 0 ? lightHighlight : darkHighlight;
-        ctx.fillRect(pos.x * tileWidth, pos.y * tileWidth, tileWidth, tileWidth);
+    function drawHighlight(move){
+        ctx.fillStyle = (move.stop.x + move.stop.y) % 2 == 0 ? lightHighlight : darkHighlight;
+        ctx.fillRect(move.stop.x * tileWidth, move.stop.y * tileWidth, tileWidth, tileWidth);
     }
 
     function capped(str){
@@ -122,8 +130,9 @@
     }
 
     function tryMove(destination){
-        if(checkMove(theGame, activePiece.pos, destination)){
-            performAndSend(move(activePiece.pos, destination))
+        var m = move(activePiece.pos, destination);
+        if(checkMove(theGame, m)){
+            performAndSend(m);
         }
         clearSelection();
     }
@@ -131,8 +140,15 @@
     function performAndSend(move){
         if(gameState(theGame) != 'playing')
             return;
-        $.post('submit', move);
+        //$.post('submit', move);
+        gameHistory.push(deepClone(theGame));
         performMove(theGame, move);
+        draw();
+    }
+
+    function undo(){
+        theGame = gameHistory.pop();
+        clearSelection();
         draw();
     }
 
@@ -145,10 +161,11 @@
     function sendReset(){
         if(!confirm('Reset the game?'))
             return;
-        $.get('reset', function(response){
-            if(response)
-                getGame();
-        });
+        // $.get('reset', function(response){
+        //     if(response)
+        //         getGame();
+        // });
+        reset();
     }
 
 </script>
@@ -163,13 +180,15 @@
 
 <div id='toMove'></div> <div id='gameState'></div>
 <canvas id='canvas' width=800 height=800></canvas> <br>
-<button onclick='getGame(false)'>Refresh</button>
-<button onclick='sendReset()'>Reset</button> <br>
+
 <button onclick='performAndSend(firstMove(theGame))'>Quick Move</button>
 <button onclick='performAndSend(randomMove(theGame))'>Random Move</button>
 <button onclick='performAndSend(greedyMove(theGame))'>Greedy Move</button>
 <button onclick='performAndSend(oneDeepMove(theGame))'>One Deep Move</button>
-<button onclick='performAndSend(nDeepMove(theGame, 3, false))'>Deep Move</button>
+<button onclick='performAndSend(nDeepMove(theGame, 3, false))'>Deep Move</button> <br>
+<!-- <button onclick='getGame(false)'>Refresh</button> -->
+<button onclick='undo()'>Undo</button>
+<button onclick='sendReset()'>Reset</button> 
 
 </body>
 </html>
