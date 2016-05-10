@@ -113,6 +113,12 @@ function board(){
 }
 
 function game(){return {board : board(), kings : {white : null, black : null}, turn : 'white'}; }
+function cloneGame(game){
+	var clone = deepClone(game);
+	clone.kings.white = getPiece(clone.board, clone.kings.white.pos);
+	clone.kings.black = getPiece(clone.board, clone.kings.black.pos);
+	return clone;
+}
 
 function move(start, stop){return {start : start, stop : stop}};
 
@@ -283,6 +289,8 @@ function revertMove(game, change){
 	var move = change.move;
 	setPiece(game.board, move.start, change.moved);
 	setPiece(game.board, move.stop, change.deleted);
+	if(change.moved.kind == 'king')
+		game.kings[change.moved.color] = change.moved;
 	game.turn = change.turn;
 }
 
@@ -341,7 +349,7 @@ function oneDeepMove(game){
 	return bestMove;
 }
 
-function nDeepMove(game, depth, maximizing, info, nodeCount){
+function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
 	var nodeCount =  nodeCount || [0];
 	var moves = allMoves(game);
 
@@ -361,10 +369,10 @@ function nDeepMove(game, depth, maximizing, info, nodeCount){
 		var score;
 		if(depth == 0){
 			game.turn = opposite(game.turn);
-			score = totalRating(game);
+			score = totalRating(game, weights);
 		} else {
 			var newInfo = {best : bestScore};
-			nDeepMove(game, depth - 1, !maximizing, newInfo, nodeCount);
+			nDeepMove(game, depth - 1, !maximizing, weights, newInfo, nodeCount);
 			score = newInfo.score;
 		}
 		if(maximizing && score > bestScore || !maximizing && score < bestScore){
@@ -438,8 +446,9 @@ function totalRating(game, weights){
 	return sum;
 }
 
-if(module) module.exports = 
+try { module.exports = 
 	{game : game, setup : setup, getMoves : getMoves, getPiece : getPiece, 
 	playerMovePiece : playerMovePiece, performMove : performMove, checkMove : checkMove, 
 	gameState : gameState, revec : revec, randomMove : randomMove, greedyMove : greedyMove,
-	oneDeepMove : oneDeepMove, nDeepMove : nDeepMove};
+	oneDeepMove : oneDeepMove, nDeepMove : nDeepMove}; }
+	catch(err) {}

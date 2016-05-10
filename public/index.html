@@ -31,6 +31,7 @@
 
     var theGame;
     var gameHistory = [];
+    var undos = [];
     var selected = [];
     var pieceSelected = false;
     var activePiece = null;
@@ -54,12 +55,6 @@
 
         //getGame(true);
         reset();
-    }
-
-    function reset(){
-        theGame = game();
-        setup(theGame);
-        draw();
     }
 
     function draw(){
@@ -140,15 +135,40 @@
     function performAndSend(move){
         if(gameState(theGame) != 'playing')
             return;
+        if(!move){
+            console.log('No move given!');
+            return;
+        }
         //$.post('submit', move);
-        gameHistory.push(deepClone(theGame));
+        gameHistory.push(cloneGame(theGame));
         performMove(theGame, move);
         draw();
+        undos = [];
     }
 
     function undo(){
+        if(gameHistory.length == 0)
+            return;
+        undos.push(cloneGame(theGame));
         theGame = gameHistory.pop();
         clearSelection();
+        draw();
+    }
+
+    function redo(){
+        if(undos.length == 0)
+            return;
+        gameHistory.push(cloneGame(theGame));
+        theGame = undos.pop();
+        clearSelection();
+        draw();
+    }
+
+    function reset(){
+        if(theGame) gameHistory.push(cloneGame(theGame));
+        undos = [];
+        theGame = game();
+        setup(theGame);
         draw();
     }
 
@@ -181,14 +201,17 @@
 <div id='toMove'></div> <div id='gameState'></div>
 <canvas id='canvas' width=800 height=800></canvas> <br>
 
-<button onclick='performAndSend(firstMove(theGame))'>Quick Move</button>
+<!-- <button onclick='performAndSend(firstMove(theGame))'>Quick Move</button>
 <button onclick='performAndSend(randomMove(theGame))'>Random Move</button>
 <button onclick='performAndSend(greedyMove(theGame))'>Greedy Move</button>
 <button onclick='performAndSend(oneDeepMove(theGame))'>One Deep Move</button>
-<button onclick='performAndSend(nDeepMove(theGame, 3, false))'>Deep Move</button> <br>
+<button onclick='performAndSend(nDeepMove(theGame, 3, false))'>Deep Move</button>
+<button onclick='performAndSend(nDeepMove(theGame, 3, false, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.5}))'>Noisy Deep Move</button> <br> -->
 <!-- <button onclick='getGame(false)'>Refresh</button> -->
 <button onclick='undo()'>Undo</button>
-<button onclick='sendReset()'>Reset</button> 
+<button onclick='redo()'>Redo</button>
+<button onclick='performAndSend(nDeepMove(theGame, 5, false, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.2}))'>Go</button> <br>
+<button onclick='sendReset()' style='color: red'>Reset</button>
 
 </body>
 </html>
