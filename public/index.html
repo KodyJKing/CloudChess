@@ -144,6 +144,7 @@
         performMove(theGame, move);
         draw();
         undos = [];
+
     }
 
     function undo(){
@@ -188,6 +189,13 @@
         reset();
     }
 
+    function aiPlay(){
+        if(gameState(theGame) != 'playing')
+            return;
+        performAndSend(nDeepMove(theGame, 5, false, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.2}))
+        if($('#autoplay').get(0).checked)
+            setTimeout(aiPlay, 100);
+    }
 </script>
 </head>
 <body>
@@ -210,8 +218,10 @@
 <!-- <button onclick='getGame(false)'>Refresh</button> -->
 <button onclick='undo()'>Undo</button>
 <button onclick='redo()'>Redo</button>
-<button onclick='performAndSend(nDeepMove(theGame, 5, false, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.2}))'>Go</button> <br>
+<button onclick='aiPlay()'>Go</button> 
+<input type="checkbox" id="autoplay" value="Bike">Autoplay</input><br>
 <button onclick='sendReset()' style='color: red'>Reset</button>
+
 
 </body>
 </html>
