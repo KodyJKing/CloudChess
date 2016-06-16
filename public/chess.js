@@ -275,8 +275,6 @@ function checkMove(game, move){
 	return false;
 }
 
-
-
 function gameState(game){
 	if(allMoves(game).length == 0)
 		return isUnderThreat(game.board, game.kings[game.turn]) ? 'checkmate' : 'stalemate';
@@ -301,52 +299,6 @@ function change(game, move){
 function firstMove(game){
 	var moves = allMoves(game);
 	return moves[0];
-}
-
-function randomMove(game){
-	var moves = allMoves(game);
-	return moves[Math.floor(Math.random() * moves.length)];
-}
-
-function greedyMove(game, info){
-	var moves = allMoves(game);
-	var bestScore = -Infinity;
-	var bestMove;
-	for(var move of moves){
-		var changes = change(game, move);
-		performMove(game, move);
-		game.turn = opposite(game.turn);
-		var score = totalRating(game);
-		if(score > bestScore){
-			bestScore = score;
-			bestMove = move;
-			if(info && score > info.min){
-				revertMove(game, changes);
-			 	break;
-			}
-		}
-		revertMove(game, changes);
-	}
-	if(info) info.score = bestScore;
-	return bestMove;
-}
-
-function oneDeepMove(game){
-	var moves = allMoves(game);
-	var bestScore = Infinity;
-	var bestMove;
-	for(var move of moves){
-		var changes = change(game, move);
-		performMove(game, move);
-		var info = {min : bestScore};
-		greedyMove(game, info);
-		if(info.score < bestScore){
-			bestScore = info.score;
-			bestMove = move;
-		}
-		revertMove(game, changes);
-	}
-	return bestMove;
 }
 
 function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
@@ -415,19 +367,19 @@ function mobilityRating(game, piece){
 }
 
 function threatRating(game, piece, weights){
-	// var sum = 0;
-	// var threats = getMoves(game, piece, false, true);
-	// for(var threat of threats){
-	// 	var victim = getPiece(game.board, threat.stop);
-	// 	var pieceWeight = victim.kind == 'king' ? weights.kingDefense : pieceValues[victim.kind];
-	// 	sum += pieceWeight * (game.turn == victim.color ? -weights.defense : weights.agression);
-	// }
-	//return sum;
-	if(isUnderThreat(game.board, piece)){
-		var pieceWeight = piece.kind == 'king' ? weights.kingDefense : pieceValues[piece.kind];
-		return pieceWeight * (game.turn == piece.color ? -weights.defense : weights.agression);
+	var sum = 0;
+	var threats = getMoves(game, piece, false, true);
+	for(var threat of threats){
+		var victim = getPiece(game.board, threat.stop);
+		var pieceWeight = victim.kind == 'king' ? weights.kingDefense : pieceValues[victim.kind];
+		sum += pieceWeight * (game.turn == victim.color ? -weights.defense : weights.agression);
 	}
-	return 0;
+	return sum;
+	// if(isUnderThreat(game.board, piece)){
+	// 	var pieceWeight = piece.kind == 'king' ? weights.kingDefense : pieceValues[piece.kind];
+	// 	return pieceWeight * (game.turn == piece.color ? -weights.defense : weights.agression);
+	// }
+	// return 0;
 }
 
 var defaults = {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0};
