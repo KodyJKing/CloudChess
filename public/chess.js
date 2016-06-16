@@ -215,7 +215,7 @@ function getMoves(game, piece, ignoreKingSafety, onlyCaptures){
 	return result;
 }
 
-function allMoves(game){
+function allMoves(game, ignoreKingSafety){
 	result = [];
 	for(var x = 0; x < 8; x++){
 		for(var y = 0; y < 8; y++){
@@ -224,7 +224,7 @@ function allMoves(game){
 			if(!piece || piece.color != game.turn)
 				continue;
 
-			var moves = getMoves(game, piece);
+			var moves = getMoves(game, piece, ignoreKingSafety);
 			for(var move of moves)
 				result.push(move);
 		}
@@ -276,7 +276,7 @@ function checkMove(game, move){
 }
 
 function gameState(game){
-	if(allMoves(game).length == 0)
+	if(allMoves(game, false).length == 0)
 		return isUnderThreat(game.board, game.kings[game.turn]) ? 'checkmate' : 'stalemate';
 	return 'playing';
 }
@@ -296,19 +296,27 @@ function change(game, move){
 	return {move : move, moved : deepClone(getPiece(game.board, move.start)), deleted : deepClone(getPiece(game.board, move.stop)), turn : game.turn};
 }
 
-function firstMove(game){
-	var moves = allMoves(game);
-	return moves[0];
+function moveValuePair(game, move, weights){
+	var changes = change(game, move);
+	performMove(game, move);
+	game.turn = opposite(game.turn);
+	var value = totalRating(game, weights);
+	revertMove(game, changes);
+	return [value, move];
+}
+
+function sortMoves(game, moves, weights){
+	moves = moves.map((move) => moveValuePair(game, move, weights)); //Sort moves by heuristic value
+	moves.sort((a,b) => b[0] - a[0]);
+	moves = moves.map((pair) => pair[1]);
+	return moves.slice(0, Math.min(8, moves.length));
 }
 
 function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
 	var nodeCount =  nodeCount || [0];
-	var moves = allMoves(game);
+	var moves = allMoves(game, true);
 
-	moves = moves.map((move) => moveValuePair(game, move)); //Sort moves by heuristic value
-	moves.sort((a,b) => b[0] - a[0]);
-	moves = moves.map((pair) => pair[1]);
-	moves = moves.slice(0, Math.ceil(moves.length / 5));
+	moves = sortMoves(game, moves, weights);
 
 	var bestScore = maximizing ? -Infinity : Infinity;
 	var bestMove;
@@ -341,18 +349,9 @@ function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
 	return bestMove;
 }
 
-function moveValuePair(game, move){
-	var changes = change(game, move);
-	performMove(game, move);
-	game.turn = opposite(game.turn);
-	var value = totalRating(game);
-	revertMove(game, changes);
-	return [value, move];
-}
-
 // Board Assessment ---------------------------------
 
-var pieceValues = {king: 0, pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9};
+var pieceValues = {king: 99999, pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9};
 
 function pieceRating(game, piece){
 	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1);
@@ -368,7 +367,7 @@ function mobilityRating(game, piece){
 
 function threatRating(game, piece, weights){
 	var sum = 0;
-	var threats = getMoves(game, piece, false, true);
+	var threats = getMoves(game, piece, true, true);
 	for(var threat of threats){
 		var victim = getPiece(game.board, threat.stop);
 		var pieceWeight = victim.kind == 'king' ? weights.kingDefense : pieceValues[victim.kind];
@@ -401,6 +400,5 @@ function totalRating(game, weights){
 try { module.exports = 
 	{game : game, setup : setup, getMoves : getMoves, getPiece : getPiece, 
 	playerMovePiece : playerMovePiece, performMove : performMove, checkMove : checkMove, 
-	gameState : gameState, revec : revec, randomMove : randomMove, greedyMove : greedyMove,
-	oneDeepMove : oneDeepMove, nDeepMove : nDeepMove}; }
+	gameState : gameState, revec : revec, nDeepMove : nDeepMove}; }
 	catch(err) {}
