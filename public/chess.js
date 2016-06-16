@@ -210,7 +210,7 @@ function getMoves(game, piece, ignoreKingSafety, onlyCaptures){
 	}
 	var king = game.kings[piece.color];
 	if(king && !ignoreKingSafety){
-		return filterByKingSafety(king, result, board, piece);
+		return filterByKingSafety(king, result, game, piece);
 	}
 	return result;
 }
@@ -232,16 +232,19 @@ function allMoves(game){
 	return result
 }
 
-function filterByKingSafety(king, moves, board, piece){
-	var filtered = [];
-	for(var move of moves){
-		var copyBoard = deepClone(board);
-		var copyPiece = getPiece(copyBoard, piece.pos);
-		var copyKing = getPiece(copyBoard, king.pos);
-		movePiece(copyBoard, copyPiece, move.stop);
-		if(!isUnderThreat(copyBoard, copyKing))
-			filtered.push(move);
-	}
+function filterByKingSafety(king, moves, game, piece){
+	// return moves;
+	// var filtered = [];
+	// for(var move of moves){
+	// 	//var copyBoard = deepClone(board);
+	// 	//var copyPiece = getPiece(copyBoard, piece.pos);
+	// 	//var copyKing = getPiece(copyBoard, king.pos);
+	// 	var changes = change(game, move);
+	// 	performMove(game, move);
+	// 	if(!isUnderThreat(game.board, king))
+	// 		filtered.push(move);
+	// 	revertMove(game, changes);
+	// }
 	return filtered;
 }
 
@@ -313,9 +316,11 @@ function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
 	var bestScore = maximizing ? -Infinity : Infinity;
 	var bestMove;
 	for(var move of moves){
+
 		nodeCount[0]++;
 		if(nodeCount[0] % 1000 == 0)
 			console.log(nodeCount[0] + ' nodes evaluated');
+
 		var changes = change(game, move);
 		performMove(game, move);
 		var score;
@@ -352,7 +357,7 @@ function moveValuePair(game, move){
 
 // Board Assessment ---------------------------------
 
-var pieceValues = {king: 0, pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9};
+var pieceValues = {king: 99999, pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9};
 
 function pieceRating(game, piece){
 	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1);
