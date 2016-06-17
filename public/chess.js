@@ -358,8 +358,7 @@ function pieceRating(game, piece){
 }
 
 function mobilityRating(game, piece){
-	//console.log(game);
-	if(piece.kind == 'pawn' || piece.kind == 'king')
+	if(piece.kind == 'king' )//|| piece.kind == 'pawn')
 		return 0;
 	var moveCount = getMoves(game, piece, true).length;
 	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1) * moveCount;
