@@ -309,7 +309,7 @@ function sortMoves(game, moves, weights){
 	moves = moves.map((move) => moveValuePair(game, move, weights)); //Sort moves by heuristic value
 	moves.sort((a,b) => b[0] - a[0]);
 	moves = moves.map((pair) => pair[1]);
-	return moves.slice(0, Math.min(8, moves.length));
+	return moves.slice(0, Math.min(weights.movesPerPosition, moves.length));
 }
 
 function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
@@ -321,9 +321,11 @@ function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
 	var bestScore = maximizing ? -Infinity : Infinity;
 	var bestMove;
 	for(var move of moves){
+
 		nodeCount[0]++;
 		if(nodeCount[0] % 1000 == 0)
 			console.log(nodeCount[0] + ' nodes evaluated');
+		
 		var changes = change(game, move);
 		performMove(game, move);
 		var score;
@@ -380,7 +382,7 @@ function threatRating(game, piece, weights){
 	// return 0;
 }
 
-var defaults = {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0};
+var defaults = {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0, movesPerPosition : 5};
 function totalRating(game, weights){
 	weights = weights || defaults;
 	var sum = Math.random() * weights.noise;
