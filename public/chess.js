@@ -300,7 +300,7 @@ function moveValuePair(game, move, weights){
 	var changes = change(game, move);
 	performMove(game, move);
 	game.turn = opposite(game.turn);
-	var value = totalRating(game, weights);
+	var value = totalRating(game, weights, false);
 	revertMove(game, changes);
 	return [value, move];
 }
@@ -312,43 +312,81 @@ function sortMoves(game, moves, weights){
 	return moves.slice(0, Math.min(weights.movesPerPosition, moves.length));
 }
 
-function nDeepMove(game, depth, maximizing, weights, info, nodeCount){
-	var nodeCount =  nodeCount || [0];
+// function nDeepMove(game, depth, maximizing, weights, info){
+// 	var moves = allMoves(game, false);
+
+// 	moves = sortMoves(game, moves, weights);
+
+// 	var bestScore = maximizing ? -Infinity : Infinity;
+// 	var bestMove;
+// 	for(var move of moves){
+//
+// 		var changes = change(game, move);
+// 		performMove(game, move);
+// 		var score;
+// 		if(depth == 0){
+// 			game.turn = opposite(game.turn);
+// 			score = totalRating(game, weights, true);
+// 		} else {
+// 			var newInfo = {best : bestScore};
+// 			nDeepMove(game, depth - 1, !maximizing, weights, newInfo);
+// 			score = newInfo.score;
+// 		}
+// 		if(maximizing && score > bestScore || !maximizing && score < bestScore){
+// 			bestScore = score;
+// 			bestMove = move;
+// 			if(info && (maximizing && score > info.best || !maximizing && score < info.best)){
+// 				revertMove(game, changes);
+// 				break;
+// 			}		
+// 		}
+// 		revertMove(game, changes);
+// 	}
+// 	if(info) info.score = bestScore;
+// 	return bestMove;
+// }
+
+function alphaBeta(game, depth, maximizing, weights, alpha, beta){
+	if(!alpha)
+		alpha = -Infinity;
+	if(!beta)
+		beta = Infinity;
+
 	var moves = allMoves(game, true);
 
 	moves = sortMoves(game, moves, weights);
 
 	var bestScore = maximizing ? -Infinity : Infinity;
 	var bestMove;
+
 	for(var move of moves){
 
-		nodeCount[0]++;
-		if(nodeCount[0] % 1000 == 0)
-			console.log(nodeCount[0] + ' nodes evaluated');
-		
 		var changes = change(game, move);
 		performMove(game, move);
 		var score;
 		if(depth == 0){
 			game.turn = opposite(game.turn);
-			score = totalRating(game, weights);
+			score = totalRating(game, weights, true);
 		} else {
-			var newInfo = {best : bestScore};
-			nDeepMove(game, depth - 1, !maximizing, weights, newInfo, nodeCount);
-			score = newInfo.score;
+			var result = alphaBeta(game, depth - 1, !maximizing, weights, alpha, beta);
+			score = result.score;
 		}
 		if(maximizing && score > bestScore || !maximizing && score < bestScore){
 			bestScore = score;
 			bestMove = move;
-			if(info && (maximizing && score > info.best || !maximizing && score < info.best)){
+			if(maximizing)
+				alpha = Math.max(alpha, score);
+			else
+				beta = Math.min(beta, score);
+			if(alpha >= beta){
 				revertMove(game, changes);
 				break;
-			}		
+			}
 		}
+
 		revertMove(game, changes);
 	}
-	if(info) info.score = bestScore;
-	return bestMove;
+	return {move : bestMove, score : bestScore};
 }
 
 // Board Assessment ---------------------------------
@@ -360,10 +398,12 @@ function pieceRating(game, piece){
 }
 
 function mobilityRating(game, piece){
-	if(piece.kind == 'king' )//|| piece.kind == 'pawn')
-		return 0;
+	// if(piece.kind == 'king' )//|| piece.kind == 'pawn')
+	// 	return 0;
+	var mobilityValue = piece.kind == 'king' ? 2 : pieceValues[piece.kind];
 	var moveCount = getMoves(game, piece, true).length;
-	return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1) * moveCount;
+	//return pieceValues[piece.kind] * (game.turn == piece.color ? 1 : -1) * moveCount;
+	return mobilityValue * (game.turn == piece.color ? 1 : -1) * moveCount;
 }
 
 function threatRating(game, piece, weights){
@@ -383,7 +423,7 @@ function threatRating(game, piece, weights){
 }
 
 var defaults = {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0, movesPerPosition : 5};
-function totalRating(game, weights){
+function totalRating(game, weights, isLeaf){
 	weights = weights || defaults;
 	var sum = Math.random() * weights.noise;
 	for(var x = 0; x < 8; x++){
@@ -391,7 +431,9 @@ function totalRating(game, weights){
 			var pos = vec(x,y);
 			var piece = getPiece(game.board, pos);
 			if(piece){
-				sum += pieceRating(game, piece) + threatRating(game, piece, weights) + mobilityRating(game, piece) * weights.mobility;
+				sum += pieceRating(game, piece) + mobilityRating(game, piece) * weights.mobility;
+				if(isLeaf)
+					sum += threatRating(game, piece, weights);
 			}
 		}
 	}
@@ -401,5 +443,5 @@ function totalRating(game, weights){
 try { module.exports = 
 	{game : game, setup : setup, getMoves : getMoves, getPiece : getPiece, 
 	playerMovePiece : playerMovePiece, performMove : performMove, checkMove : checkMove, 
-	gameState : gameState, revec : revec, nDeepMove : nDeepMove}; }
+	gameState : gameState, revec : revec, alphaBeta : alphaBeta}; }
 	catch(err) {}

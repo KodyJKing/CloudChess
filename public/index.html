@@ -189,11 +189,13 @@
         reset();
     }
 
-    var DEPTH = 5;
+    var DEPTH = 3;
     function aiPlay(){
         if(gameState(theGame) != 'playing')
             return;
-        var move = nDeepMove(theGame, DEPTH, DEPTH % 2 == 0, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.2, movesPerPosition : 6});
+        var move;
+        var result = alphaBeta(theGame, DEPTH, DEPTH % 2 == 0, {mobility : 0.1, agression : 0.2, defense : 0.8, kingDefense : 18, noise : 0.2, movesPerPosition : 32});
+        move = result.move;
         if(checkMove(theGame, move))
             performAndSend(move);
         if($('#autoplay').get(0).checked)
