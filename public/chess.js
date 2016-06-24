@@ -312,45 +312,10 @@ function sortMoves(game, moves, weights){
 	return moves.slice(0, Math.min(weights.movesPerPosition, moves.length));
 }
 
-// function nDeepMove(game, depth, maximizing, weights, info){
-// 	var moves = allMoves(game, false);
-
-// 	moves = sortMoves(game, moves, weights);
-
-// 	var bestScore = maximizing ? -Infinity : Infinity;
-// 	var bestMove;
-// 	for(var move of moves){
-//
-// 		var changes = change(game, move);
-// 		performMove(game, move);
-// 		var score;
-// 		if(depth == 0){
-// 			game.turn = opposite(game.turn);
-// 			score = totalRating(game, weights, true);
-// 		} else {
-// 			var newInfo = {best : bestScore};
-// 			nDeepMove(game, depth - 1, !maximizing, weights, newInfo);
-// 			score = newInfo.score;
-// 		}
-// 		if(maximizing && score > bestScore || !maximizing && score < bestScore){
-// 			bestScore = score;
-// 			bestMove = move;
-// 			if(info && (maximizing && score > info.best || !maximizing && score < info.best)){
-// 				revertMove(game, changes);
-// 				break;
-// 			}		
-// 		}
-// 		revertMove(game, changes);
-// 	}
-// 	if(info) info.score = bestScore;
-// 	return bestMove;
-// }
-
-function alphaBeta(game, depth, maximizing, weights, alpha, beta){
-	if(!alpha)
-		alpha = -Infinity;
-	if(!beta)
-		beta = Infinity;
+function alphaBeta(game, depth, maximizing, weights, alpha, beta, transposition){
+	alpha = alpha || -Infinity;
+	beta = beta || Infinity;
+	transposition = transposition || {};
 
 	var moves = allMoves(game, true);
 
@@ -363,14 +328,26 @@ function alphaBeta(game, depth, maximizing, weights, alpha, beta){
 
 		var changes = change(game, move);
 		performMove(game, move);
+
 		var score;
-		if(depth == 0){
-			game.turn = opposite(game.turn);
-			score = totalRating(game, weights, true);
-		} else {
-			var result = alphaBeta(game, depth - 1, !maximizing, weights, alpha, beta);
-			score = result.score;
+		var key = JSON.stringify(game) + depth;
+
+		if(transposition[key]){
+			//console.log('Repeat state!');
+			score = transposition[key];
 		}
+		else {
+			if(depth == 0){
+				game.turn = opposite(game.turn);
+				score = totalRating(game, weights, true);
+			} else {
+				var result = alphaBeta(game, depth - 1, !maximizing, weights, alpha, beta, transposition);
+				score = result.score;
+			}
+			transposition[key] = score;
+		}
+		
+
 		if(maximizing && score > bestScore || !maximizing && score < bestScore){
 			bestScore = score;
 			bestMove = move;
